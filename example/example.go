@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	prominentcolor ".."
+	prominentcolor "github.com/gage-technologies/prominentcolor"
 )
 
 func loadImage(fileInput string) (image.Image, error) {

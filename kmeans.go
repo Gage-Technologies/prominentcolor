@@ -54,20 +54,16 @@ var (
 // ErrNoPixelsFound is returned when no non-alpha pixels are found in the provided image
 var ErrNoPixelsFound = fmt.Errorf("Failed, no non-alpha pixels found (either fully transparent image, or the ColorBackgroundMask removed all pixels)")
 
-// ColorRGB contains the color values
-type ColorRGB struct {
-	R, G, B uint32
-}
-
 // ColorItem contains color and have many occurrences of this color found
 type ColorItem struct {
-	Color ColorRGB
+	Color color.Color
 	Cnt   int
 }
 
 // AsString gives back the color in hex as 6 character string
 func (c *ColorItem) AsString() string {
-	return fmt.Sprintf("%.2X%.2X%.2X", c.Color.R, c.Color.G, c.Color.B)
+	r, g, b, _ := c.Color.RGBA()
+	return fmt.Sprintf("%.2X%.2X%.2X", r, g, b)
 }
 
 // createColor returns ColorItem struct unless it was a transparent color
@@ -80,7 +76,7 @@ func createColor(c color.Color) (ColorItem, bool) {
 	}
 
 	divby := uint32(256.0)
-	return ColorItem{Color: ColorRGB{R: r / divby, G: g / divby, B: b / divby}}, false
+	return ColorItem{Color: color.RGBA{R: uint8(r / divby), G: uint8(g / divby), B: uint8(b / divby), A: 0xff}}, false
 }
 
 // IsBitSet check if "lookingfor" is set in "bitset"
@@ -219,14 +215,15 @@ func mean(colors []ColorItem) ColorItem {
 	cntInThisBucket := 0
 	for _, aColor := range colors {
 		cntInThisBucket += aColor.Cnt
-		r += float64(aColor.Color.R)
-		g += float64(aColor.Color.G)
-		b += float64(aColor.Color.B)
+		ar, ag, ab, _ := aColor.Color.RGBA()
+		r += float64(ar)
+		g += float64(ag)
+		b += float64(ab)
 	}
 
 	theSize := float64(len(colors))
 
-	return ColorItem{Cnt: cntInThisBucket, Color: ColorRGB{R: uint32(r / theSize), G: uint32(g / theSize), B: uint32(b / theSize)}}
+	return ColorItem{Cnt: cntInThisBucket, Color: color.RGBA{R: uint8(r / theSize), G: uint8(g / theSize), B: uint8(b / theSize), A: 0xff}}
 }
 
 // median calculate the median color from an array of colors
@@ -238,9 +235,10 @@ func median(colors []ColorItem) ColorItem {
 
 	for _, aColor := range colors {
 		cntInThisBucket += aColor.Cnt
-		rValues = append(rValues, int(aColor.Color.R))
-		gValues = append(gValues, int(aColor.Color.G))
-		bValues = append(bValues, int(aColor.Color.B))
+		ar, ag, ab, _ := aColor.Color.RGBA()
+		rValues = append(rValues, int(ar))
+		gValues = append(gValues, int(ag))
+		bValues = append(bValues, int(ab))
 	}
 
 	retR := 0
@@ -261,7 +259,7 @@ func median(colors []ColorItem) ColorItem {
 		retB = bValues[int(len(bValues)/2)]
 	}
 
-	return ColorItem{Cnt: cntInThisBucket, Color: ColorRGB{R: uint32(retR), G: uint32(retG), B: uint32(retB)}}
+	return ColorItem{Cnt: cntInThisBucket, Color: color.RGBA{R: uint8(retR), G: uint8(retG), B: uint8(retB), A: 0xff}}
 }
 
 // extractColorsAsArray counts the number of occurrences of each color in the image, returns array and numPixels
@@ -353,13 +351,8 @@ func distanceLAB(c ColorItem, p ColorItem) float64 {
 }
 
 func distanceRGB(c ColorItem, p ColorItem) float64 {
-	r := c.Color.R
-	g := c.Color.G
-	b := c.Color.B
-
-	r2 := p.Color.R
-	g2 := p.Color.G
-	b2 := p.Color.B
+	r, g, b, _ := c.Color.RGBA()
+	r2, g2, b2, _ := p.Color.RGBA()
 
 	//sqrt not needed since we just want to compare distances to each other
 	return float64((r-r2)*(r-r2) + (g-g2)*(g-g2) + (b-b2)*(b-b2))
